@@ -41,7 +41,7 @@ public class Main {
             URLHandler temp=new URLHandler(link);
             index.addDocument(temp.getURL(), temp.parseURL().getBody());
         }
-
+        System.out.println(index.getTFIDFScore("been",18));
         System.out.println("wait");
     }
 

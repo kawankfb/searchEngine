@@ -1,3 +1,8 @@
+import org.json.simple.JSONArray;
+import org.json.simple.JSONObject;
+import org.json.simple.parser.JSONParser;
+import org.json.simple.parser.ParseException;
+
 import javax.print.Doc;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -22,6 +27,43 @@ public class TF_IDF_Index {
             queryBuilder.append("');");
             statement.execute(queryBuilder.toString());
 
+
+            int result=0;
+            ArrayList<String> tokens= getDocumentTokens(body);
+            for (String token : tokens) {
+                statement = Main.getConnection().createStatement();
+                ResultSet myResults = statement.executeQuery("SELECT COUNT(*) FROM df WHERE token=\""+token+"\";");
+                while (myResults.next()) {
+                    result=myResults.getInt(1);
+                }
+                if (result==0){
+                    statement = Main.getConnection().createStatement();
+                     queryBuilder=new StringBuilder("insert into df (token, count) values ('");
+                    queryBuilder.append(token);
+                    queryBuilder.append("','");
+                    queryBuilder.append(1);
+                    queryBuilder.append("');");
+                    statement.execute(queryBuilder.toString());
+                }
+                else if (result==1){
+                    long tokenCount=1;
+                    statement = Main.getConnection().createStatement();
+                     myResults = statement.executeQuery("SELECT count FROM df WHERE token=\""+token+"\";");
+                    while (myResults.next()) {
+                        tokenCount=myResults.getLong(1);
+                    }
+                    statement = Main.getConnection().createStatement();
+                    queryBuilder=new StringBuilder("UPDATE df SET count=");
+                    queryBuilder.append(tokenCount+1);
+                    queryBuilder.append(" WHERE token=\"");
+                    queryBuilder.append(token);
+                    queryBuilder.append("\";");
+
+                    statement.execute(queryBuilder.toString());
+                }
+            }
+
+
         } catch (SQLException throwables) {
             throwables.printStackTrace();
         }
@@ -32,4 +74,98 @@ public class TF_IDF_Index {
 
         return results;
     }
+    private double calculateIDF(long docFrequency,long docCount){
+        return Math.log10((double)docCount/docFrequency);
+    }
+    private int getDocumentCount(){
+        int result=-1;
+        Statement statement= null;
+        try {
+            statement = Main.getConnection().createStatement();
+            ResultSet myResults = statement.executeQuery("SELECT COUNT(*) FROM documents");
+            while (myResults.next()) {
+                result=myResults.getInt(1);
+            }
+        }
+        catch (Exception e){
+
+        }
+        return result;
+    }
+    public double getTFIDFScore(String token,int docID){
+        long allDocumentsCount=getDocumentCount();
+        long tokenCount=getTokenCountInDocument(token,docID);
+        long documentFrequency=getDocumentFrequencyOfToken(token);
+        double invertDocumentFrequency= calculateIDF(documentFrequency,allDocumentsCount);
+        return tokenCount*invertDocumentFrequency;
+    }
+    private long getTokenCountInDocument(String token,int docId){
+        long result=0;
+        Statement statement= null;
+        try {
+            statement = Main.getConnection().createStatement();
+            ResultSet myResults = statement.executeQuery("SELECT body FROM documents WHERE id="+docId+';');
+            if (myResults.next()) {
+                String jsonString=myResults.getString(1);
+                JSONParser parser =new JSONParser();
+                JSONObject jsonObject=(JSONObject) parser.parse(jsonString);
+                JSONArray jsonArray= (JSONArray) jsonObject.get("bag_of_words");
+                Iterator iterator= jsonArray.iterator();
+                while (iterator.hasNext()){
+                    JSONObject temp= (JSONObject) iterator.next();
+                    if (token.equals(temp.get("token"))) {
+                        result = (long) temp.get("count");
+                        break;
+                    }
+                    }
+            }
+        }
+        catch (Exception e){
+
+        }
+        return result;
+    }
+    private ArrayList<String> getDocumentTokens(String jsonString){
+        ArrayList<String> results=new ArrayList<String>();
+        Statement statement= null;
+
+                JSONParser parser =new JSONParser();
+        JSONObject jsonObject= null;
+        try {
+            jsonObject = (JSONObject) parser.parse(jsonString);
+            JSONArray jsonArray= (JSONArray) jsonObject.get("bag_of_words");
+            Iterator iterator= jsonArray.iterator();
+            while (iterator.hasNext()){
+                JSONObject temp= (JSONObject) iterator.next();
+                results.add((String) temp.get("token"));
+            }
+        } catch (ParseException e) {
+            e.printStackTrace();
+        }
+
+
+        return results;
+    }
+    private long getDocumentFrequencyOfToken(String token){
+        long result=0;
+        try{
+        Statement statement = Main.getConnection().createStatement();
+        ResultSet myResults = statement.executeQuery("SELECT COUNT(*) FROM df WHERE token=\""+token+"\";");
+        while (myResults.next()) {
+            result=myResults.getInt(1);
+        }if (result==1) {
+            long tokenCount = 1;
+            statement = Main.getConnection().createStatement();
+            myResults = statement.executeQuery("SELECT count FROM df WHERE token=\"" + token + "\";");
+            while (myResults.next()) {
+                tokenCount = myResults.getLong(1);
+                return tokenCount;
+            }
+        }}catch (Exception e){
+
+        }
+        return result;
+    }
+
+
 }
