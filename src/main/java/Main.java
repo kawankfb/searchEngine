@@ -8,7 +8,7 @@ import java.util.ArrayList;
 import java.util.Scanner;
 
 public class Main {
-    private static final String baseURL="http://urmia.ac.ir/";
+    private static final String baseURL="https://www.digikala.com/mag/";
 
     public static void setConnection(Connection connection) {
         Main.connection = connection;
@@ -37,12 +37,23 @@ public class Main {
             throw new IllegalStateException("Cannot connect the database!", e);
         }
         TF_IDF_Index index=new TF_IDF_Index();
+        int count=0;
         for (String link : links) {
+            if (count>9)
+                continue;
             URLHandler temp=new URLHandler(link);
             index.addDocument(temp.getURL(), temp.parseURL().getBody());
+            count++;
         }
-        System.out.println(index.getTFIDFScore("been",18));
-        System.out.println("wait");
+        while (true){
+            System.out.println("please Enter your Query");
+            Scanner scanner=new Scanner(System.in);
+            String query=scanner.nextLine();
+            ArrayList<DocumentLink> rankedDocumentLinks=index.rankDocumentsByTFIDF(query);
+            for (DocumentLink rankedDocumentLink : rankedDocumentLinks) {
+                System.out.println(rankedDocumentLink.getURL()+" : "+rankedDocumentLink.getTf_idf_score());
+            }
+        }
     }
 
 
@@ -63,7 +74,7 @@ public class Main {
 
         }
         WebCrawlerWithDepth crawler= new WebCrawlerWithDepth();
-        crawler.getPageLinks(Main.baseURL,3);
+        crawler.getPageLinks(Main.baseURL,2);
         links.addAll(crawler.getLinks());
         try {
             PrintWriter printWriter=new PrintWriter("saved_links.txt");

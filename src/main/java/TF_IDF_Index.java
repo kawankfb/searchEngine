@@ -75,6 +75,8 @@ public class TF_IDF_Index {
         return results;
     }
     private double calculateIDF(long docFrequency,long docCount){
+        if (docFrequency==0)
+            return 0;
         return Math.log10((double)docCount/docFrequency);
     }
     private int getDocumentCount(){
@@ -165,6 +167,27 @@ public class TF_IDF_Index {
 
         }
         return result;
+    }
+    public ArrayList<DocumentLink> rankDocumentsByTFIDF(String query){
+        ArrayList<DocumentLink> results=new ArrayList<DocumentLink>();
+        ArrayList<String> tokens=Tokenizer.tokenize(CharacterNormalizer.normalizeString(query));
+        try{
+            Statement statement = Main.getConnection().createStatement();
+            ResultSet myResults = statement.executeQuery("SELECT id,url FROM documents;");
+            while (myResults.next()) {
+                int id=myResults.getInt(1);
+                String url=myResults.getString(2);
+                double sum=0;
+                for (String token : tokens) {
+                    sum=sum+getTFIDFScore(token,id);
+                }
+                results.add(new DocumentLink(sum,url));
+            }
+            }catch (Exception e){
+                e.printStackTrace();
+        }
+        results.sort(DocumentLink::compareTo);
+        return results;
     }
 
 
