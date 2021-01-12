@@ -3,7 +3,6 @@ import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
 import org.json.simple.parser.ParseException;
 
-import javax.print.Doc;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -14,7 +13,7 @@ public class TF_IDF_Index {
     private HashMap<Integer,Document> docStore=new HashMap<>();
     private HashSet<String> distinctTokens=new HashSet<>();
 
-    public void addDocument(String URL,String body){
+    private void addDocument(String URL,String body){
         Document document=new Document(URL,body);
         docStore.put(document.getId(),document);
         Statement statement= null;
@@ -62,6 +61,14 @@ public class TF_IDF_Index {
                     statement.execute(queryBuilder.toString());
                 }
             }
+            BigramIndex bigramIndex=new BigramIndex();
+            for (String token : tokens) {
+                long max= getTokenCountInJsonBody(token,body);
+                for (long i = 0; i <max ; i++) {
+                    bigramIndex.add(token);
+                }
+            }
+            bigramIndex.insertBigramIndexToDB();
 
 
         } catch (SQLException throwables) {
@@ -148,6 +155,26 @@ public class TF_IDF_Index {
 
         return results;
     }
+    private long getTokenCountInJsonBody(String token,String jsonString){
+        long result=0;
+        try {
+            JSONParser parser =new JSONParser();
+            JSONObject jsonObject=(JSONObject) parser.parse(jsonString);
+            JSONArray jsonArray= (JSONArray) jsonObject.get("bag_of_words");
+            Iterator iterator= jsonArray.iterator();
+            while (iterator.hasNext()){
+                JSONObject temp= (JSONObject) iterator.next();
+                if (token.equals(temp.get("token"))) {
+                    result = (long) temp.get("count");
+                    break;
+                }
+            }
+        }catch (Exception e){
+            e.printStackTrace();
+        }
+        return result;
+    }
+
     private long getDocumentFrequencyOfToken(String token){
         long result=0;
         try{
@@ -189,6 +216,35 @@ public class TF_IDF_Index {
         results.sort(DocumentLink::compareTo);
         return results;
     }
+    private ArrayList<String> getIndexedURLs() {
+        ArrayList<String> result = new ArrayList<>();
+        try {
+            Statement statement = Main.getConnection().createStatement();
+            ResultSet myResults = statement.executeQuery("SELECT url FROM documents;");
+            while (myResults.next()) {
+                String url = myResults.getString(1);
+                result.add(url);
+            }
+        }
+        catch (Exception e){
+            e.printStackTrace();
+        }
 
+
+        return result;
+    }
+
+    public void addAllDocuments(List<String> urls){
+        ArrayList<String> indexedURLs=getIndexedURLs();
+        int count=0;
+        for (String url : urls) {
+            if (count++>13)
+                break;
+            if (indexedURLs.contains(url))
+                continue;
+            URLHandler temp=new URLHandler(url);
+            addDocument(temp.getURL(), temp.parseURL().getBody());
+        }
+    }
 
 }
