@@ -216,7 +216,7 @@ public class TF_IDF_Index {
         results.sort(DocumentLink::compareTo);
         return results;
     }
-    private ArrayList<String> getIndexedURLs() {
+    public ArrayList<String> getIndexedURLs() {
         ArrayList<String> result = new ArrayList<>();
         try {
             Statement statement = Main.getConnection().createStatement();
@@ -245,6 +245,14 @@ public class TF_IDF_Index {
             URLHandler temp=new URLHandler(url);
             addDocument(temp.getURL(), temp.parseURL().getBody());
         }
+    }
+    public void addDocumentByURL(String url){
+        ArrayList<String> indexedURLs=getIndexedURLs();
+            if (indexedURLs.contains(url))
+                return;
+            URLHandler temp=new URLHandler(url);
+            addDocument(temp.getURL(), temp.parseURL().getBody());
+
     }
 
 }

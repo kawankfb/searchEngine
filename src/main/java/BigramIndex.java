@@ -232,7 +232,11 @@ public class BigramIndex{
                 tempSB.append(' ');
                 turn++;
             }
-            topQuerySuggestions.add(tempSB.toString());
+            if (tempSB.charAt(tempSB.length()-1)==' ')
+            topQuerySuggestions.add(tempSB.substring(0,tempSB.length()-1));
+            else
+                topQuerySuggestions.add(tempSB.toString());
+
             ints[length-1]++;
             for (int i = length-1; i >=0 ; i--) {
                 if (ints[i]>limits[i]) {

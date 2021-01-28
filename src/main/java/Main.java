@@ -1,6 +1,5 @@
+import Exceptions.AppException;
 import io.javalin.Javalin;
-import org.json.simple.JSONArray;
-import org.json.simple.JSONObject;
 
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -51,37 +50,19 @@ public class Main {
 //                System.out.println(rankedDocumentLink.getURL()+" : "+rankedDocumentLink.getTf_idf_score());
 //            }
 //        }
-        /*
+
         Javalin app=Javalin.create().start(7000);
-        app.get("/search/:query",ctx ->{
-            String query=ctx.pathParam("query");
-            ArrayList<DocumentLink> results= index.rankDocumentsByTFIDF(query);
-            if (results.get(0).getTf_idf_score()<0.0000000001)
-                results=new ArrayList<>();
-            JSONObject jsonObject=new JSONObject();
-            JSONArray jsonArray=new JSONArray();
-            for (int i = 0; i < results.size() && i<10; i++) {
-                JSONObject temp=new JSONObject();
-                temp.put("url",results.get(i).getURL());
-                temp.put("score",results.get(i).getTf_idf_score());
-                temp.put("rank",i+1);
-                jsonArray.add(temp);
-            }
-            jsonObject.put("results",jsonArray);
-            jsonObject.put("query",query);
-            ctx.status(200);
-            if (results.isEmpty())
-                ctx.status(404);
+        RequestHandler requestHandler=new RequestHandler(index);
+        app.get("/search/:query",requestHandler::normalSearch);
+        app.get("/",requestHandler::homePage);
+        app.get("/exact_search/:query",requestHandler::exactSearch);
+        app.get("/spellchecker/:query",requestHandler::getTopQuerySuggestions);
+        app.post("/document",requestHandler::addDocument);
+        app.exception(AppException.class,(e, ctx) -> {
             ctx.contentType("application/json");
-            ctx.result(jsonObject.toJSONString());
-        });*/
-        BigramIndex bigramIndex=new BigramIndex();
-        while (true){
-            Scanner scanner=new Scanner(System.in);
-            for (String topQuerySuggestion : bigramIndex.getTopQuerySuggestions(scanner.nextLine(), 3)) {
-                System.out.println(topQuerySuggestion);
-            }
-        }
+            ctx.status(e.getHttpCode());
+            ctx.result(e.getMessage());
+        });
     }
 
 
