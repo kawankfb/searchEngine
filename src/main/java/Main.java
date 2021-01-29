@@ -28,28 +28,11 @@ public class Main {
             Connection connection = DriverManager.getConnection(url, username, password);
             setConnection(connection);
             System.out.println("Database connected!");
-            /*
-            Statement statement=connection.createStatement();
-            ResultSet myResults=statement.executeQuery("SELECT * FROM documents");
-             while (myResults.next()){
-                System.out.print("url = "+myResults.getString("url"));
-                System.out.println(" ->  body = "+myResults.getString("body"));
-            }*/
-
         } catch (SQLException e) {
             throw new IllegalStateException("Cannot connect the database!", e);
         }
         TF_IDF_Index index=new TF_IDF_Index();
        index.addAllDocuments(links);
-//        while (true){
-//            System.out.println("please Enter your Query");
-//            Scanner scanner=new Scanner(System.in);
-//            String query=scanner.nextLine();
-//            ArrayList<DocumentLink> rankedDocumentLinks=index.rankDocumentsByTFIDF(query);
-//            for (DocumentLink rankedDocumentLink : rankedDocumentLinks) {
-//                System.out.println(rankedDocumentLink.getURL()+" : "+rankedDocumentLink.getTf_idf_score());
-//            }
-//        }
 
         Javalin app=Javalin.create().start(7000);
         RequestHandler requestHandler=new RequestHandler(index);
@@ -58,6 +41,11 @@ public class Main {
         app.get("/exact_search/:query",requestHandler::exactSearch);
         app.get("/spellchecker/:query",requestHandler::getTopQuerySuggestions);
         app.post("/document",requestHandler::addDocument);
+        app.post("/result",requestHandler::showSearchResult);
+        app.post("/exact_result",requestHandler::showExactSearchResult);
+        app.post("/spell_result",requestHandler::showSpellCorrectionResult);
+        app.delete("/document",requestHandler::deleteUrl);
+        app.put("/document",requestHandler::updateDocument);
         app.exception(AppException.class,(e, ctx) -> {
             ctx.contentType("application/json");
             ctx.status(e.getHttpCode());

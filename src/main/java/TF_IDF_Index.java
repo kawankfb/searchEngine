@@ -1,3 +1,4 @@
+import Exceptions.*;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
@@ -246,13 +247,38 @@ public class TF_IDF_Index {
             addDocument(temp.getURL(), temp.parseURL().getBody());
         }
     }
-    public void addDocumentByURL(String url){
+    public void addDocumentByURL(String url) throws AppException{
         ArrayList<String> indexedURLs=getIndexedURLs();
             if (indexedURLs.contains(url))
-                return;
-            URLHandler temp=new URLHandler(url);
+throw new UrlAlreadyExistsException();
+        URLHandler temp=new URLHandler(url);
             addDocument(temp.getURL(), temp.parseURL().getBody());
 
     }
+
+    public void updateDocument(String url) throws AppException {
+        if (!getIndexedURLs().contains(url))
+        throw new UrlNotExistsException();
+            deleteDocument(url);
+        addDocumentByURL(url);
+    }
+
+    public void deleteDocument(String url) throws DeleteUnsuccessfulException, UrlAlreadyDeletedException {
+        if (!getIndexedURLs().contains(url))
+            throw new UrlAlreadyDeletedException();
+            Statement statement= null;
+            try {
+                statement = Main.getConnection().createStatement();
+
+                StringBuilder queryBuilder=new StringBuilder("DELETE FROM documents WHERE url=\""+url+"\";");
+                statement.execute(queryBuilder.toString());
+                if (getIndexedURLs().contains(url))
+                getIndexedURLs().remove(url);
+            } catch (SQLException throwables) {
+                throw new DeleteUnsuccessfulException();
+            }
+
+
+        }
 
 }
