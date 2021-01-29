@@ -45,7 +45,10 @@ public class Main {
         app.post("/exact_result",requestHandler::showExactSearchResult);
         app.post("/spell_result",requestHandler::showSpellCorrectionResult);
         app.delete("/document",requestHandler::deleteUrl);
+        app.post("/delete",requestHandler::deleteUrl);
         app.put("/document",requestHandler::updateDocument);
+        app.post("/update",requestHandler::updateDocument);
+        app.post("/add",requestHandler::addDocument);
         app.exception(AppException.class,(e, ctx) -> {
             ctx.contentType("application/json");
             ctx.status(e.getHttpCode());

@@ -133,7 +133,7 @@ public class RequestHandler {
     }
 
     public void homePage(Context context) throws IOException {
-    StringBuilder stringBuilder=new StringBuilder();
+        StringBuilder stringBuilder=new StringBuilder();
         stringBuilder.append("<!DOCTYPE html>");
         stringBuilder.append("<html lang=\"fa-IR\">");
         stringBuilder.append("<meta charset=\"utf-8\"");
@@ -147,19 +147,44 @@ public class RequestHandler {
         stringBuilder.append("<form action=\"/result\" accept-charset=\"utf-8\" method=\"post\">\n" +
                 "        <input type=\"text\" placeholder=\"search\" name=\"query\" >\n" +
                 "        <br><br>\n" +
-                "        <input type=\"submit\" name=\"submit\">\n" +
+                "        <input type=\"submit\" name=\"submit\" value=\"search\">\n" +
                 "    </form>");
-                stringBuilder.append("<br>");
+        stringBuilder.append("<br>");
         stringBuilder.append("<form action=\"/exact_result\" accept-charset=\"utf-8\" method=\"post\">\n" +
                 "        <input type=\"text\" placeholder=\"exact search\" name=\"query\" >\n" +
                 "        <br><br>\n" +
-                "        <input type=\"submit\" name=\"submit\">\n" +
+                "        <input type=\"submit\" name=\"submit\" value=\"exact search\">\n" +
                 "    </form>");
         stringBuilder.append("<br>");
         stringBuilder.append("<form action=\"/spell_result\" accept-charset=\"utf-8\" method=\"post\">\n" +
-                "        <input type=\"text\" accept-charset=\"utf-8\" placeholder=\"تصحیح خطا\" name=\"query\" >\n" +
+                "        <input type=\"text\" accept-charset=\"utf-8\" placeholder=\"spell correction\" name=\"query\" >\n" +
                 "        <br><br>\n" +
-                "        <input type=\"submit\"  name=\"submit\">\n" +
+                "        <input type=\"submit\"  name=\"submit\" value=\"correct query\">\n" +
+                "    </form>");
+
+        stringBuilder.append("<br>");
+
+        stringBuilder.append("<form action=\"/delete\" accept-charset=\"utf-8\" method=\"post\">\n" +
+                "        <input type=\"text\" accept-charset=\"utf-8\" placeholder=\"url to delete\" name=\"url\" >\n" +
+                "        <br><br>\n" +
+                "        <input type=\"submit\"  name=\"delete\" value=\"delete\">\n" +
+                "    </form>");
+
+
+        stringBuilder.append("<br>");
+
+        stringBuilder.append("<form action=\"/add\" accept-charset=\"utf-8\" method=\"post\">\n" +
+                "        <input type=\"text\" accept-charset=\"utf-8\" placeholder=\"url to delete\" name=\"url\" >\n" +
+                "        <br><br>\n" +
+                "        <input type=\"submit\"  name=\"add\"  value=\"add\">\n" +
+                "    </form>");
+
+        stringBuilder.append("<br>");
+
+        stringBuilder.append("<form action=\"/update\" accept-charset=\"utf-8\" method=\"post\">\n" +
+                "        <input type=\"text\" accept-charset=\"utf-8\" placeholder=\"url to delete\" name=\"url\" >\n" +
+                "        <br><br>\n" +
+                "        <input type=\"submit\"  name=\"update\" value=\"update\">\n" +
                 "    </form>");
         stringBuilder.append("<body>");
         stringBuilder.append('\n');
@@ -174,6 +199,7 @@ public class RequestHandler {
         String query=context.formParam("query");
         String newQuery=topQuerySuggestionsAsArrayList(query).get(0);
         JSONObject jsonObject= searchQuery(query,newQuery);
+        String view = viewCreator(jsonObject);
         StringBuilder stringBuilder=new StringBuilder();
         stringBuilder.append("<html>");
         stringBuilder.append('\n');
@@ -181,13 +207,30 @@ public class RequestHandler {
         stringBuilder.append('\n');
         stringBuilder.append("<head>");
         stringBuilder.append('\n');
+        stringBuilder.append("<style>\n" +
+                "table {\n" +
+                "  font-family: arial, sans-serif;\n" +
+                "  border-collapse: collapse;\n" +
+                "  width: 100%;\n" +
+                "}\n" +
+                "\n" +
+                "td, th {\n" +
+                "  border: 1px solid #dddddd;\n" +
+                "  text-align: left;\n" +
+                "  padding: 8px;\n" +
+                "}\n" +
+                "\n" +
+                "tr:nth-child(even) {\n" +
+                "  background-color: #dddddd;\n" +
+                "}\n" +
+                "</style>\n");
         stringBuilder.append("</head>");
         stringBuilder.append('\n');
         stringBuilder.append("<body>");
         stringBuilder.append('\n');
         stringBuilder.append("search result");
         stringBuilder.append("<br>");
-
+        stringBuilder.append(view);
         stringBuilder.append("<body>");
         stringBuilder.append('\n');
         stringBuilder.append("</body>");
@@ -200,12 +243,7 @@ public class RequestHandler {
     public void showExactSearchResult(Context context) {
         String query=context.formParam("query");
         JSONObject jsonObject=searchQuery(query,query);
-        JSONArray jsonArray= (JSONArray) jsonObject.get("results");
-        DocumentLink[] documentLinks=new DocumentLink[jsonArray.size()];
-        for (int i = 0; i < documentLinks.length; i++) {
-            JSONObject temp=(JSONObject) jsonArray.get(i);
-            documentLinks[i]=new DocumentLink(Double.parseDouble(temp.get("score").toString()),temp.get("url").toString());
-        }
+        String view=viewCreator(jsonObject);
 
         StringBuilder stringBuilder=new StringBuilder();
         stringBuilder.append("<html>");
@@ -214,13 +252,31 @@ public class RequestHandler {
         stringBuilder.append('\n');
         stringBuilder.append("<head>");
         stringBuilder.append('\n');
+        stringBuilder.append("<style>\n" +
+                "table {\n" +
+                "  font-family: arial, sans-serif;\n" +
+                "  border-collapse: collapse;\n" +
+                "  width: 100%;\n" +
+                "}\n" +
+                "\n" +
+                "td, th {\n" +
+                "  border: 1px solid #dddddd;\n" +
+                "  text-align: left;\n" +
+                "  padding: 8px;\n" +
+                "}\n" +
+                "\n" +
+                "tr:nth-child(even) {\n" +
+                "  background-color: #dddddd;\n" +
+                "}\n" +
+                "</style>\n");
         stringBuilder.append("</head>");
         stringBuilder.append('\n');
         stringBuilder.append("<body>");
         stringBuilder.append('\n');
         stringBuilder.append("exact search result");
         stringBuilder.append("<br>");
-        stringBuilder.append(documentLinks[0].getURL() +" score : "+documentLinks[0].getTf_idf_score());
+        stringBuilder.append(view);
+
         stringBuilder.append("<body>");
         stringBuilder.append('\n');
         stringBuilder.append("</body>");
@@ -228,6 +284,35 @@ public class RequestHandler {
         stringBuilder.append("</html>");
         context.contentType("text/html");
         context.result(stringBuilder.toString());
+    }
+
+    private String viewCreator(JSONObject jsonObject){
+        StringBuilder stringBuilder=new StringBuilder();
+
+        JSONArray jsonArray= (JSONArray) jsonObject.get("results");
+        DocumentLink[] documentLinks=new DocumentLink[jsonArray.size()];
+        for (int i = 0; i < documentLinks.length; i++) {
+            JSONObject temp=(JSONObject) jsonArray.get(i);
+            documentLinks[i]=new DocumentLink(Double.parseDouble(temp.get("score").toString()),temp.get("url").toString());
+        }
+        stringBuilder.append(" <table> <tr>\n" +
+                "    <th>Link</th>\n" +
+                "    <th>Score</th>\n" +
+                "  </tr>\n");
+
+        for (DocumentLink documentLink : documentLinks) {
+
+            stringBuilder.append("<tr>\n");
+            stringBuilder.append("<td>\n <a href=\""+documentLink.getURL()+" \">");
+            stringBuilder.append(documentLink.getURL());
+            stringBuilder.append("</a></td>\n");
+            stringBuilder.append("<td>\n");
+            stringBuilder.append(documentLink.getTf_idf_score());
+            stringBuilder.append("</td>\n");
+            stringBuilder.append("</tr>\n");
+        }
+        stringBuilder.append("</table>\n");
+        return stringBuilder.toString();
     }
 
     public void showSpellCorrectionResult(Context context) {
@@ -246,32 +331,38 @@ public class RequestHandler {
         stringBuilder.append('\n');
         stringBuilder.append("spell result");
         stringBuilder.append("<br>");
+        stringBuilder.append("<ul>");
         for (String suggestion : suggestions) {
-            stringBuilder.append("<h1 accept-charset=\"utf-8\">");
+            stringBuilder.append("<li accept-charset=\"utf-8\">");
             stringBuilder.append(" "+suggestion+" ");
-            stringBuilder.append("</h1>");
-            stringBuilder.append("<br>");
+            stringBuilder.append("</li>");
         }
 
-        stringBuilder.append("<body>");
-        stringBuilder.append('\n');
+        stringBuilder.append("<ul>");
         stringBuilder.append("</body>");
         stringBuilder.append('\n');
         stringBuilder.append("</html>");
         context.contentType("text/html");
         context.result(stringBuilder.toString());
     }
-
     public void deleteUrl(Context context) throws AppException {
     String url=context.formParam("url");
         urlValidator(url);
     index.deleteDocument(url);
+    context.status(200);
+    JSONObject jsonObject=new JSONObject();
+    jsonObject.put("message","The specified url was successfully delete from our repository");
+    context.result(jsonObject.toJSONString());
     }
 
     public void updateDocument(Context context) throws AppException {
         String url=context.formParam("url");
         urlValidator(url);
         index.updateDocument(url);
+        context.status(200);
+        JSONObject jsonObject=new JSONObject();
+        jsonObject.put("message","The specified url was successfully updated in our repository");
+        context.result(jsonObject.toJSONString());
     }
     public static void urlValidator(String url) throws BadUrlException {
         // Get an UrlValidator using default schemes
