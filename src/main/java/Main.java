@@ -11,7 +11,7 @@ import java.util.ArrayList;
 import java.util.Scanner;
 
 public class Main {
-    private static final String baseURL="https://www.digikala.com/mag/";
+    private static final String baseURL="http://urmia.ac.ir/";
 
     public static void setConnection(Connection connection) {
         Main.connection = connection;
@@ -19,21 +19,7 @@ public class Main {
 
     private static Connection connection=null;
     public static void main(String[] args) {
-        ArrayList<String> links= getLinks();
-
-        String url = "jdbc:mysql://localhost:3306/tf_idf";
-        String username = "root";
-        String password = "";
-        try {
-            Connection connection = DriverManager.getConnection(url, username, password);
-            setConnection(connection);
-            System.out.println("Database connected!");
-        } catch (SQLException e) {
-            throw new IllegalStateException("Cannot connect the database!", e);
-        }
         TF_IDF_Index index=new TF_IDF_Index();
-       index.addAllDocuments(links);
-
         Javalin app=Javalin.create().start(7000);
         RequestHandler requestHandler=new RequestHandler(index);
         app.get("/search/:query",requestHandler::normalSearch);
@@ -54,6 +40,35 @@ public class Main {
             ctx.status(e.getHttpCode());
             ctx.result(e.getMessage());
         });
+
+        ArrayList<String> links=new ArrayList<>();
+        links = getLinks();
+
+
+        ArrayList<String> possibleMySQLAddresses=new ArrayList<>();
+        possibleMySQLAddresses.add("localhost");
+        possibleMySQLAddresses.add("127.0.0.1");
+        possibleMySQLAddresses.add("172.17.0.1");
+        possibleMySQLAddresses.add("172.17.0.2");
+        possibleMySQLAddresses.add("172.17.0.3");
+        possibleMySQLAddresses.add("0.0.0.0");
+        for (String possibleMySQLAddress : possibleMySQLAddresses) {
+            try {
+                String url = "jdbc:mysql://"+possibleMySQLAddress+":3306/tf_idf";
+                String username = "root";
+                String password = "kawan1378";
+                Connection connection = DriverManager.getConnection(url, username, password);
+                setConnection(connection);
+                System.out.println("Database connected!");
+                break;
+            } catch (SQLException e) {
+                System.out.println("Cannot connect the database! : "+possibleMySQLAddress);
+            }
+        }
+
+       index.addAllDocuments(links);
+
+
     }
 
 
@@ -74,7 +89,7 @@ public class Main {
 
         }
         WebCrawlerWithDepth crawler= new WebCrawlerWithDepth();
-        crawler.getPageLinks(Main.baseURL,2);
+        crawler.getPageLinks(Main.baseURL,3);
         links.addAll(crawler.getLinks());
         try {
             PrintWriter printWriter=new PrintWriter("saved_links.txt");

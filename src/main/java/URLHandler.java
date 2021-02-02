@@ -1,4 +1,3 @@
-import com.mysql.cj.xdevapi.JsonArray;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Element;
 
@@ -60,7 +59,13 @@ public class URLHandler {
     }
 
     private String getText(){
-        org.jsoup.nodes.Document doc = Jsoup.parse(DownloadWebPage(URL));
+        org.jsoup.nodes.Document doc;
+        try {
+            doc = Jsoup.parse(DownloadWebPage(URL));
+
+        } catch (Exception e){
+            return "{\"bag_of_words\":[]}";
+        }
         String bodyOfURL=doc.text();
         ArrayList<String> tokens= Tokenizer.tokenize(CharacterNormalizer.normalizeString(bodyOfURL));
         Map<String,Integer> tableOfTokens=new HashMap<>();

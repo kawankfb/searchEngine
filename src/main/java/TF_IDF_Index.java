@@ -62,11 +62,38 @@ public class TF_IDF_Index {
                     statement.execute(queryBuilder.toString());
                 }
             }
+
+            JSONParser parser =new JSONParser();
+            JSONObject jsonObject=(JSONObject) parser.parse(body);
+            JSONArray jsonArray= (JSONArray) jsonObject.get("bag_of_words");
+            Iterator iterator= jsonArray.iterator();
+            statement = Main.getConnection().createStatement();
+            ResultSet myResults = statement.executeQuery("SELECT id FROM documents WHERE url=\""+URL+"\";");
+            int docID=-1;
+            while (myResults.next()) {
+                docID=myResults.getInt(1);
+            }
+            if (docID!=-1){
+
+                while (iterator.hasNext()){
+                    JSONObject temp= (JSONObject) iterator.next();
+                    statement = Main.getConnection().createStatement();
+                    queryBuilder=new StringBuilder("insert into tf (docID, term, frequency) values ('");
+                    queryBuilder.append(docID);
+                    queryBuilder.append("','");
+                    queryBuilder.append(temp.get("token"));
+                    queryBuilder.append("','");
+                    queryBuilder.append(temp.get("count"));
+                    queryBuilder.append("');");
+                    statement.execute(queryBuilder.toString());
+                    }
+                }
+            iterator= jsonArray.iterator();
             BigramIndex bigramIndex=new BigramIndex();
-            for (String token : tokens) {
-                long max= getTokenCountInJsonBody(token,body);
-                for (long i = 0; i <max ; i++) {
-                    bigramIndex.add(token);
+            while (iterator.hasNext()){
+                JSONObject temp= (JSONObject) iterator.next();
+                for (int i = 0; i <(long)temp.getOrDefault("count", 0) ; i++) {
+                    bigramIndex.add((String) temp.get("token"));
                 }
             }
             bigramIndex.insertBigramIndexToDB();
@@ -74,14 +101,11 @@ public class TF_IDF_Index {
 
         } catch (SQLException throwables) {
             throwables.printStackTrace();
+        } catch (ParseException e) {
+            e.printStackTrace();
         }
     }
 
-    public List<Document> getQuery(String query){
-        ArrayList<Document> results=new ArrayList<>();
-
-        return results;
-    }
     private double calculateIDF(long docFrequency,long docCount){
         if (docFrequency==0)
             return 0;
@@ -102,32 +126,21 @@ public class TF_IDF_Index {
         }
         return result;
     }
-    public double getTFIDFScore(String token,int docID){
-        long allDocumentsCount=getDocumentCount();
-        long tokenCount=getTokenCountInDocument(token,docID);
-        long documentFrequency=getDocumentFrequencyOfToken(token);
-        double invertDocumentFrequency= calculateIDF(documentFrequency,allDocumentsCount);
-        return tokenCount*invertDocumentFrequency;
+    public double getTFIDFScore(String token,int tokenFrequency,double invertDocumentFrequency){
+        System.out.println("before token freq");
+        System.out.println("before document frequency");
+        return tokenFrequency*invertDocumentFrequency;
     }
-    private long getTokenCountInDocument(String token,int docId){
-        long result=0;
+    private HashMap<Integer,Integer> getTokenFrequency(String token){
+        HashMap<Integer, Integer> result=new HashMap<>();
         Statement statement= null;
         try {
             statement = Main.getConnection().createStatement();
-            ResultSet myResults = statement.executeQuery("SELECT body FROM documents WHERE id="+docId+';');
-            if (myResults.next()) {
-                String jsonString=myResults.getString(1);
-                JSONParser parser =new JSONParser();
-                JSONObject jsonObject=(JSONObject) parser.parse(jsonString);
-                JSONArray jsonArray= (JSONArray) jsonObject.get("bag_of_words");
-                Iterator iterator= jsonArray.iterator();
-                while (iterator.hasNext()){
-                    JSONObject temp= (JSONObject) iterator.next();
-                    if (token.equals(temp.get("token"))) {
-                        result = (long) temp.get("count");
-                        break;
-                    }
-                    }
+            ResultSet myResults = statement.executeQuery("SELECT docID,frequency FROM tf WHERE term=\""+token+"\";");
+            while (myResults.next()) {
+                int frequency=myResults.getInt(2);
+                int docID=myResults.getInt(1);
+                result.putIfAbsent(docID,frequency);
             }
         }
         catch (Exception e){
@@ -135,6 +148,7 @@ public class TF_IDF_Index {
         }
         return result;
     }
+
     private ArrayList<String> getDocumentTokens(String jsonString){
         ArrayList<String> results=new ArrayList<String>();
         Statement statement= null;
@@ -156,26 +170,6 @@ public class TF_IDF_Index {
 
         return results;
     }
-    private long getTokenCountInJsonBody(String token,String jsonString){
-        long result=0;
-        try {
-            JSONParser parser =new JSONParser();
-            JSONObject jsonObject=(JSONObject) parser.parse(jsonString);
-            JSONArray jsonArray= (JSONArray) jsonObject.get("bag_of_words");
-            Iterator iterator= jsonArray.iterator();
-            while (iterator.hasNext()){
-                JSONObject temp= (JSONObject) iterator.next();
-                if (token.equals(temp.get("token"))) {
-                    result = (long) temp.get("count");
-                    break;
-                }
-            }
-        }catch (Exception e){
-            e.printStackTrace();
-        }
-        return result;
-    }
-
     private long getDocumentFrequencyOfToken(String token){
         long result=0;
         try{
@@ -202,13 +196,22 @@ public class TF_IDF_Index {
         try{
             Statement statement = Main.getConnection().createStatement();
             ResultSet myResults = statement.executeQuery("SELECT id,url FROM documents;");
+            long allDocumentsCount=getDocumentCount();
+            System.out.println("before idf");
+            double[] idfs=new double[tokens.size()];
+            HashMap<Integer,Integer>[] tfs=new HashMap[tokens.size()];
+            for (int i = 0; i < tokens.size(); i++) {
+                idfs[i]=calculateIDF(getDocumentFrequencyOfToken(tokens.get(i)),allDocumentsCount);
+                tfs[i]=getTokenFrequency(tokens.get(i));
+            }
             while (myResults.next()) {
                 int id=myResults.getInt(1);
                 String url=myResults.getString(2);
                 double sum=0;
-                for (String token : tokens) {
-                    sum=sum+getTFIDFScore(token,id);
+                for (int i = 0; i < tokens.size(); i++) {
+                    sum=sum+getTFIDFScore(tokens.get(i),tfs[i].getOrDefault(id,0),idfs[i]);
                 }
+                if (sum>0.00000001)
                 results.add(new DocumentLink(sum,url));
             }
             }catch (Exception e){
@@ -239,8 +242,6 @@ public class TF_IDF_Index {
         ArrayList<String> indexedURLs=getIndexedURLs();
         int count=0;
         for (String url : urls) {
-            if (count++>13)
-                break;
             if (indexedURLs.contains(url))
                 continue;
             URLHandler temp=new URLHandler(url);

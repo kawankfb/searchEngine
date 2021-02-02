@@ -1,7 +1,6 @@
 import Exceptions.*;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
-import com.mysql.cj.xdevapi.JsonArray;
 import io.javalin.http.Context;
 import org.apache.commons.validator.routines.UrlValidator;
 import org.json.simple.JSONArray;
@@ -15,12 +14,12 @@ public class RequestHandler {
     TF_IDF_Index index;
     BigramIndex bigramIndex;
     private Cache<String,ArrayList<DocumentLink>> searchCache= CacheBuilder.newBuilder()
-            .maximumSize(10000)
+            .maximumSize(500)
             .expireAfterWrite(20, TimeUnit.MINUTES)
             .build();
 
     private Cache<String,ArrayList<String>> spellCorrectionCache= CacheBuilder.newBuilder()
-            .maximumSize(10000)
+            .maximumSize(500)
             .expireAfterWrite(20, TimeUnit.MINUTES)
             .build();
 
